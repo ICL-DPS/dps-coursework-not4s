@@ -83,15 +83,18 @@ public:
     auto& input0 = inputNames[0].first == "c" ? inputs[0] : inputs[1];
     auto& input1 = inputNames[0].first != "c" ? inputs[0] : inputs[1];
 
-    //=============================================
-    // HERE IS WHERE YOUR IMPLEMENTATION SHOULD GO!!!
-    // HERE IS WHERE YOUR IMPLEMENTATION SHOULD GO!!!
-    // HERE IS WHERE YOUR IMPLEMENTATION SHOULD GO!!!
-    // HERE IS WHERE YOUR IMPLEMENTATION SHOULD GO!!!
-    // HERE IS WHERE YOUR IMPLEMENTATION SHOULD GO!!!
-    // HERE IS WHERE YOUR IMPLEMENTATION SHOULD GO!!!
-    // HERE IS WHERE YOUR IMPLEMENTATION SHOULD GO!!!
-    //=============================================
+    /* Initial Attempt */
+    // std::sort input0 and input1
+    // loop on index i = iterator for <c, d>, j = iterator for <a, b>
+    //    if input1[j].second < input0[i].first
+    //        increment j
+    //    else if input1[j].second > input0[i].first
+    //        increment i
+    //    else
+    //        hash join with currentInput(=input_)
+    //            if hash value of input0[i] == currentInput[k]
+    //                firstResultColumn = input1[j].first
+    //                secondResultColumn = currentInput[k].second
 
     inputs.clear();
     if(firstResultColumn.size() == 0)
