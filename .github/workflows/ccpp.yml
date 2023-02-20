@@ -1,0 +1,141 @@
+name: "Build and run Velox tests and benchmark"
+
+on:
+  push:
+    branches: [ '*' ]
+  pull_request:
+    branches: [ '*' ]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  debug-build:
+    runs-on: [self-hosted, debug]
+    container:
+      image: ghcr.io/little-big-h/dps-docker-image:main
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v3
+      - name: "Run init script"
+        run: source /usr/local/bin/build-init.sh ${{ github.job }}
+      - name: "Build CPP code"
+        run: |
+          mkdir Debug && cd Debug \
+          && cmake \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DVELOX_PATH=/usr/local/velox \
+            -DCMAKE_BUILD_TYPE=Debug \
+            .. \
+          && cmake --build .
+
+  release-build:
+    runs-on: [self-hosted, release]
+    container:
+      image: ghcr.io/little-big-h/dps-docker-image:main
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v3
+      - name: "Run init script"
+        run: source /usr/local/bin/build-init.sh ${{ github.job }}
+      - name: "Build CPP code"
+        run: |
+          mkdir Release && cd Release \
+          && cmake \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DVELOX_PATH=/usr/local/velox \
+            -DCMAKE_BUILD_TYPE=Release \
+            .. \
+          && cmake --build .
+
+  run-tests:
+    runs-on: [self-hosted, tests]
+    container:
+      image: ghcr.io/little-big-h/dps-docker-image:main
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v3
+      - name: "Run init script"
+        run: source /usr/local/bin/build-init.sh ${{ github.job }}
+      - name: "Build CPP code"
+        run: |
+          mkdir Debug && cd Debug \
+          && cmake \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DVELOX_PATH=/usr/local/velox \
+            -DCMAKE_BUILD_TYPE=Debug \
+            .. \
+          && cmake --build .
+      - name: "Run tests"
+        run: (./Debug/Tests "*small*" &&  ./Debug/Tests "*large*" &&  ./Debug/Tests "*plan*") | tee tests_out.txt
+      - name: "Upload benchmark output"
+        uses: actions/upload-artifact@v3
+        with:
+          name: dps-velox-tests-out
+          path: ${{ github.workspace }}/tests_out.txt
+
+  run-benchmarks:
+    runs-on: [self-hosted, benchmarks]
+    container:
+      image: ghcr.io/little-big-h/dps-docker-image:main
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v3
+      - name: "Run init script"
+        run: source /usr/local/bin/build-init.sh ${{ github.job }}
+      - name: "Build CPP code"
+        run: |
+          mkdir Release && cd Release \
+          && cmake \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DVELOX_PATH=/usr/local/velox \
+            -DCMAKE_BUILD_TYPE=Release \
+            .. \
+          && cmake --build .
+      - name: "Run benchmarks"
+        run: ./Release/Benchmarks | tee benchmark_out.txt
+      - name: "Upload benchmark output"
+        uses: actions/upload-artifact@v3
+        with:
+          name: dps-velox-benchmark-out
+          path: ${{ github.workspace }}/benchmark_out.txt
+
+  generate-report:
+    needs: [run-tests, run-benchmarks]
+    runs-on: [self-hosted, report]
+    container:
+      image: ghcr.io/little-big-h/dps-docker-image:main
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v3
+        # We need to set the safe git directory as reporting relies on git-ls
+        # See actions/checkout#766
+      - name: "Set the GH workspace as a safe git directory"
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: "Run init script"
+        run: source /usr/local/bin/build-init.sh ${{ github.job }}
+      - name: "Download benchmark output to include in report"
+        uses: actions/download-artifact@v3
+        with:
+          name: dps-velox-benchmark-out
+      - name: "Download tests output to include in report"
+        uses: actions/download-artifact@v3
+        with:
+          name: dps-velox-tests-out
+      - name: "Copy report generation script in place"
+        run: cp /usr/local/bin/generate_report.py ./report_script.py
+      - name: "Run script to generate report"
+        run: ./report_script.py
+      - name: "Convert report to pdf"
+        run: |
+          enscript -p tmp.ps ./out/report.txt
+          ps2pdf tmp.ps ./out/report.pdf
+      - name: "Change report name to include the commit hash"
+        run: mv ./out/report.pdf ./out/report_${{ github.sha }}.pdf
+      - name: "Publish report as artifact"
+        uses: actions/upload-artifact@v3
+        with:
+          name: submission-report-${{ github.sha }}
+          path: ./out/report_${{ github.sha }}.pdf
