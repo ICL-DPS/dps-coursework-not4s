@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 namespace {
 using namespace facebook::velox;
 using namespace datagenerator;
@@ -96,6 +97,68 @@ public:
     //                firstResultColumn = input1[j].first
     //                secondResultColumn = currentInput[k].second
 
+    auto sortPairByFirst = [] (auto entryOne, auto entryTwo) {
+      if (entryOne.first == entryTwo.first)
+        return entryOne.second < entryTwo.second;
+      return entryOne.first < entryTwo.first;
+    }
+
+    auto sortPairBySecond = [] (auto entryOne, auto entryTwo) {
+      if (entryOne.second == entryTwo.second)
+        return entryOne.first < entryTwo.first;
+      return entryOne.second < entryTwo.second;
+    }
+
+    // need to manually implement the sort function
+    std::sort(input0.begin(), input0.end(), sortPairByFirst);  // <c, d>
+    std::sort(input1.begin(), input1.end(), sortPairBySecond); // <a, b>
+
+    auto leftI = 0;
+    auto rightI = 0;
+
+    // key = hashvalue, value = vector of pairs (need to consider duplicates)
+    std::vector<std::optional<std::vector<<std::pair<int64_t, int64_t>>>> hashTable;
+    for (std::size_t i = 0; i < input_.size(); ++i) {
+      bool inserted = false;
+      auto buildInput = input_[i];
+      auto hashValue = std::hash(buildInput.first); // need to manually implement the hash function
+      while (hashTable[hashValue].hasValue) {
+        if (buildInput.first != hashTable[hashValue].value[0].first) {
+          hashTable[hashValue].value.push_back(buildInput);
+          inserted = true;
+          break;
+        }
+        hashValue = nextSlot(hashValue); // and the nextSlot function
+      }
+      if (!inserted) hashTable[hashValue] = {buildInput};
+    }
+
+
+    // Sort-Merge Join on unique values
+    while (leftI < input1.size() && rightI < input0.size()) {
+      auto leftInput = input1[leftI];
+      auto rightInput = input0[rightI];
+      if (leftInput.second < rightInput.first)
+        leftI++;
+      else if (leftInput.second > rightInput.first)
+        rightI++;
+      else {
+        // Hash join
+        auto hashValue = std::hash(rightInput.first); // need to manually implement the hash function
+        while (hashTable[hashValue].hasValue &&
+               hashTable[hashValue].value[0].first != rightInput.second)
+          hashValue = nextSlot(hashValue);
+        if (hashTable[hashValue].value[0].first == rightInput.second) {
+          for (auto const& entry : hashTable[hashValue].value) {
+            // We reached where b == c and d == e
+            firstResultColumn.push_back(leftInput.first); // a
+            secondResultColumn.push_back(entry.second);   // f
+          }
+        }
+      }
+    }
+
+    
     inputs.clear();
     if(firstResultColumn.size() == 0)
       return nullptr;
