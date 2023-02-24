@@ -126,15 +126,15 @@ public:
       return value % 5000;
     };
     auto nextSlot = [&] (auto const& value) {
-      return modHash(++value);
+      return modHash(value + 1);
     };
-    for (std::size_t i = 0; i < buffer.size(); ++i) {
+    for (std::size_t i = 0; i < buffer->size(); ++i) {
       bool inserted = false;
       auto buildInput = {buffer[i], buffer2[i]};
       auto hashValue = modHash(buildInput.first);
-      while (hashTable[hashValue].has_value) {
-        if (buildInput.first == hashTable[hashValue].value[0].first) {
-          hashTable[hashValue].value.push_back(buildInput);
+      while (hashTable[hashValue].has_value()) {
+        if (buildInput.first == hashTable[hashValue].value()[0].first) {
+          hashTable[hashValue].value().push_back(buildInput);
           inserted = true;
           break;
         }
@@ -156,11 +156,11 @@ public:
       else {
         // Hash Phase - Probe and Join
         auto hashValue = modHash(rightInput.first);
-        while (hashTable[hashValue].has_value &&
-               hashTable[hashValue].value[0].first != rightInput.second)
+        while (hashTable[hashValue].has_value() &&
+               hashTable[hashValue].value()[0].first != rightInput.second)
           hashValue = nextSlot(hashValue);
-        if (hashTable[hashValue].value[0].first == rightInput.second) {
-          for (auto const& entry : hashTable[hashValue].value) {
+        if (hashTable[hashValue].value()[0].first == rightInput.second) {
+          for (auto const& entry : hashTable[hashValue].value()) {
             // Iterate through duplicates of the state where b == c and d == e
             firstResultColumn.push_back(leftInput.first); // a
             secondResultColumn.push_back(entry.second);   // f
