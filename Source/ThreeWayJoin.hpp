@@ -97,17 +97,18 @@ public:
     //                firstResultColumn = input1[j].first
     //                secondResultColumn = currentInput[k].second
 
+    // Sort Phase
     auto sortPairByFirst = [] (auto entryOne, auto entryTwo) {
       if (entryOne.first == entryTwo.first)
         return entryOne.second < entryTwo.second;
       return entryOne.first < entryTwo.first;
-    }
+    };
 
     auto sortPairBySecond = [] (auto entryOne, auto entryTwo) {
       if (entryOne.second == entryTwo.second)
         return entryOne.first < entryTwo.first;
       return entryOne.second < entryTwo.second;
-    }
+    };
 
     // need to manually implement the sort function
     std::sort(input0.begin(), input0.end(), sortPairByFirst);  // <c, d>
@@ -116,25 +117,35 @@ public:
     auto leftI = 0;
     auto rightI = 0;
 
-    // key = hashvalue, value = vector of pairs (need to consider duplicates)
+    // Hash Phase - Build
+    // key = hashvalue, value = vector of pairs (for locality)
     std::vector<std::optional<std::vector<<std::pair<int64_t, int64_t>>>> hashTable;
+    auto modHash = [] (auto const& value) {
+      // Data is in the 0~5000 range, hence there are no collisions
+      // There will be some empty slots, but we're trading off memory for locality
+      return value % 5000;
+    };
+    auto nextSlot = [&] (auto const& value) {
+      return modHash(++value);
+    };
     for (std::size_t i = 0; i < input_.size(); ++i) {
       bool inserted = false;
       auto buildInput = input_[i];
-      auto hashValue = std::hash(buildInput.first); // need to manually implement the hash function
-      while (hashTable[hashValue].hasValue) {
-        if (buildInput.first != hashTable[hashValue].value[0].first) {
+      auto hashValue = modHash(buildInput.first);
+      while (hashTable[hashValue].has_value) {
+        if (buildInput.first == hashTable[hashValue].value[0].first) {
           hashTable[hashValue].value.push_back(buildInput);
           inserted = true;
           break;
         }
-        hashValue = nextSlot(hashValue); // and the nextSlot function
+        hashValue = nextSlot(hashValue);
       }
       if (!inserted) hashTable[hashValue] = {buildInput};
     }
 
 
     // Sort-Merge Join on unique values
+    // Merge Phase
     while (leftI < input1.size() && rightI < input0.size()) {
       auto leftInput = input1[leftI];
       auto rightInput = input0[rightI];
@@ -143,14 +154,14 @@ public:
       else if (leftInput.second > rightInput.first)
         rightI++;
       else {
-        // Hash join
-        auto hashValue = std::hash(rightInput.first); // need to manually implement the hash function
-        while (hashTable[hashValue].hasValue &&
+        // Hash Phase - Probe and Join
+        auto hashValue = modHash(rightInput.first);
+        while (hashTable[hashValue].has_value &&
                hashTable[hashValue].value[0].first != rightInput.second)
           hashValue = nextSlot(hashValue);
         if (hashTable[hashValue].value[0].first == rightInput.second) {
           for (auto const& entry : hashTable[hashValue].value) {
-            // We reached where b == c and d == e
+            // Iterate through duplicates of the state where b == c and d == e
             firstResultColumn.push_back(leftInput.first); // a
             secondResultColumn.push_back(entry.second);   // f
           }
