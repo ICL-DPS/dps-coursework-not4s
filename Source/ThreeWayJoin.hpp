@@ -119,7 +119,7 @@ public:
 
     // Hash Phase - Build
     // key = hashvalue, value = vector of pairs (for locality)
-    std::vector<std::optional<std::vector<<std::pair<int64_t, int64_t>>>> hashTable;
+    std::vector<std::optional<std::vector<std::pair<int64_t, int64_t>>>> hashTable;
     auto modHash = [] (auto const& value) {
       // Data is in the 0~5000 range, hence there are no collisions
       // There will be some empty slots, but we're trading off memory for locality
@@ -128,9 +128,9 @@ public:
     auto nextSlot = [&] (auto const& value) {
       return modHash(++value);
     };
-    for (std::size_t i = 0; i < input_.size(); ++i) {
+    for (std::size_t i = 0; i < buffer.size(); ++i) {
       bool inserted = false;
-      auto buildInput = input_[i];
+      auto buildInput = {buffer[i], buffer2[i]};
       auto hashValue = modHash(buildInput.first);
       while (hashTable[hashValue].has_value) {
         if (buildInput.first == hashTable[hashValue].value[0].first) {
