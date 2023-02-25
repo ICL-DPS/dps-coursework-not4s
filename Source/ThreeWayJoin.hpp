@@ -130,7 +130,7 @@ public:
     };
     for (std::size_t i = 0; i < buffer->size(); ++i) {
       bool inserted = false;
-      auto buildInput = {buffer[i], buffer2[i]};
+      std::pair<int64_t, int64_t> buildInput = {buffer[i], buffer2[i]};
       auto hashValue = modHash(buildInput.first);
       while (hashTable[hashValue].has_value()) {
         if (buildInput.first == hashTable[hashValue].value()[0].first) {
