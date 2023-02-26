@@ -130,7 +130,7 @@ public:
     };
     for (std::size_t i = 0; i < buffer->size(); ++i) {
       bool inserted = false;
-      auto buildInput = buffer->valueAtFast(i), buffer2->valueAtFast(i)};
+      auto buildInput = buffer->valueAtFast(i), buffer2->valueAtFast(i);
       auto hashValue = modHash(buildInput.first);
       while (hashTable[hashValue].has_value()) {
         if (buildInput.first == hashTable[hashValue].value()[0].first) {
