@@ -166,9 +166,25 @@ public:
             secondResultColumn.push_back(entry.second);   // f
           }
         }
+
+        // Checking for duplicates in sort-merge
+        auto nextRightInput = input0[rightI + 1];
+        auto first_duplicate_pos = -1;
+
+        if (leftInput.second < nextRightInput.first) {
+          // Could add a check to see if nextLeftInput 
+          // is a duplicate to skip rightI backwards travel
+          if (first_duplicate_pos != -1) {
+            rightI = first_duplicate_pos;
+          }
+          leftI++;
+        }
+        else {
+          first_duplicate_pos = rightI;
+          rightI++;
+        }
       }
     }
-
     
     inputs.clear();
     if(firstResultColumn.size() == 0)
