@@ -82,7 +82,7 @@ public:
 
     // make sure the inputs are ordered correctly
     auto& input0 = inputNames[0].first == "c" ? inputs[0] : inputs[1]; // < c, d >
-    auto& input1 = inputNames[0].first != "c" ? inputs[0] : inputs[1]; // < a, b >
+    auto& input1 = inputNames[0].first != "c" ? inputs[0] : inputs[1]; // < e, f >
 
     /* Initial Attempt */
     // std::sort input0 and input1
@@ -170,8 +170,8 @@ public:
 
     // Sort-Merge Join on unique values
     // Merge Phase
-    while (leftI < input1.size() && rightI < input0.size()) {
-      auto leftInput = input1[leftI];
+    while (leftI < input2.size() && rightI < input0.size()) {
+      auto leftInput = input2[leftI];
       auto rightInput = input0[rightI];
       if (leftInput.second < rightInput.first)
         leftI++;
