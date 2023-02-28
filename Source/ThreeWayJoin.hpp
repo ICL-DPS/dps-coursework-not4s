@@ -81,8 +81,8 @@ public:
     auto buffer2 = currentInput->childAt(1)->template asFlatVector<int64_t>();
 
     // make sure the inputs are ordered correctly
-    auto& input0 = inputNames[0].first == "c" ? inputs[0] : inputs[1];
-    auto& input1 = inputNames[0].first != "c" ? inputs[0] : inputs[1];
+    auto& input0 = inputNames[0].first == "c" ? inputs[0] : inputs[1]; // < c, d >
+    auto& input1 = inputNames[0].first != "c" ? inputs[0] : inputs[1]; // < a, b >
 
     /* Initial Attempt */
     // std::sort input0 and input1
@@ -110,16 +110,40 @@ public:
       return entryOne.second < entryTwo.second;
     };
 
+    std::vector<std::pair<int64_t, int64_t> input2(buffer->size());
+    for (size_t i = 0; i < buffer->size(); ++i) {
+      input2[i] = { buffer->valueAtFast(i), buffer2->valueAtFast(i) }
+    }
+
     // need to manually implement the sort function
     std::sort(input0.begin(), input0.end(), sortPairByFirst);  // <c, d>
-    std::sort(input1.begin(), input1.end(), sortPairBySecond); // <a, b>
+    std::sort(input2.begin(), input2.end(), sortPairBySecond); // <a, b>
+
+    // // DEBUG
+    // std::cout << inputNames[0].first << " " << inputNames[0].second << std::endl;
+    // std::cout << inputNames[1].first << " " << inputNames[1].second << std::endl;
+
+    // std::cout << "Input0 : ";
+    // for (std::size_t i = 0; i < input0.size(); ++i)
+    //   std::cout << "<" << input0[i].first << ", " << input0[i].second << ">" << " ";
+    // std::cout << std::endl;
+    // std::cout << "Input1 : ";
+    // for (std::size_t i = 0; i < input1.size(); ++i)
+    //   std::cout << "<" << input1[i].first << ", " << input1[i].second << ">" << " ";
+
+    // for (std::size_t i = 0; i < buffer.size(); ++i) {
+    //   std::cout << "BUFFER: "
+    //   std::cout << "<" << buffer->valueAtFast(i) << ", ";
+    //   std::cout << buffer2->valueAtFast(i) << "> ";
+    // }
+    // std::cout << std::endl;
 
     auto leftI = 0;
     auto rightI = 0;
 
     // Hash Phase - Build
     // key = hashvalue, value = vector of pairs (for locality)
-    std::vector<std::optional<std::vector<std::pair<int64_t, int64_t>>>> hashTable;
+    std::vector<std::optional<std::vector<std::pair<int64_t, int64_t>>>> hashTable(5000);
     auto modHash = [] (auto const& value) {
       // Data is in the 0~5000 range, hence there are no collisions
       // There will be some empty slots, but we're trading off memory for locality
@@ -128,9 +152,9 @@ public:
     auto nextSlot = [&] (auto const& value) {
       return modHash(value + 1);
     };
-    for (std::size_t i = 0; i < buffer->size(); ++i) {
+    for (std::size_t i = 0; i < input1.size(); ++i) {
       bool inserted = false;
-      std::pair<int64_t, int64_t> buildInput = { buffer->valueAtFast(i), buffer2->valueAtFast(i) };
+      std::pair<int64_t, int64_t> buildInput = input1[i];
       auto hashValue = modHash(buildInput.first);
       while (hashTable[hashValue].has_value()) {
         if (buildInput.first == hashTable[hashValue].value()[0].first) {
