@@ -25,7 +25,7 @@ static void ReferenceBenchmark(benchmark::State& state) {
     auto firstTable = generateTable({"a", "b"}, firstTableScale, firstTableScale / 40);
     auto secondTable = generateTable({"c", "d"}, secondTableScale, secondTableScale / 50);
     auto thirdTable = generateTable({"e", "f"}, thirdTableScale, 320);
-    auto plan = makeCountByNode(getReferencePlan(firstTable, secondTable, thirdTable), "f");
+    auto plan = makeCountByNode(getReferencePlan(firstTable, secondTable, thirdTable), "a");
     state.ResumeTiming(); // Stop timers. They will not count until they are resumed.
 
     auto result = getResult(plan);
@@ -46,7 +46,7 @@ static void MultiWayBenchmark(benchmark::State& state) {
     auto firstTable = generateTable({"a", "b"}, firstTableScale, firstTableScale / 40);
     auto secondTable = generateTable({"c", "d"}, secondTableScale, secondTableScale / 50);
     auto thirdTable = generateTable({"e", "f"}, thirdTableScale, 320);
-    auto plan = makeCountByNode(getMultiWayPlan(firstTable, secondTable, thirdTable), "f");
+    auto plan = makeCountByNode(getMultiWayPlan(firstTable, secondTable, thirdTable), "a");
     state.ResumeTiming(); // And resume timers. They are now counting again.
 
     auto result = getResult(plan);

@@ -13,7 +13,7 @@ public:
   const RowTypePtr& outputType() const override {
     static auto type =
         ROW({"a", "f"}, {CppToType<int64_t>::create(), CppToType<int64_t>::create()});
-    return type;
+    return type;  
   }
 
   const std::vector<core::PlanNodePtr>& sources() const override { return sources_; }
@@ -123,10 +123,10 @@ public:
     // std::cout << inputNames[0].first << " " << inputNames[0].second << std::endl;
     // std::cout << inputNames[1].first << " " << inputNames[1].second << std::endl;
 
-    std::cout << "Input2 : ";
-    for (std::size_t i = 0; i < input2.size(); ++i)
-      std::cout << "<" << input2[i].first << ", " << input2[i].second << ">" << " ";
-    std::cout << std::endl;
+    // std::cout << "Input2 : ";
+    // for (std::size_t i = 0; i < input2.size(); ++i)
+    //   std::cout << "<" << input2[i].first << ", " << input2[i].second << ">" << " ";
+    // std::cout << std::endl;
     // std::cout << "Input1 : ";
     // for (std::size_t i = 0; i < input1.size(); ++i)
     //   std::cout << "<" << input1[i].first << ", " << input1[i].second << ">" << " ";
