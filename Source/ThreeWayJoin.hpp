@@ -84,19 +84,6 @@ public:
     auto& input0 = inputNames[0].first == "c" ? inputs[0] : inputs[1]; // < c, d >
     auto& input1 = inputNames[0].first != "c" ? inputs[0] : inputs[1]; // < e, f >
 
-    /* Initial Attempt */
-    // std::sort input0 and input1
-    // loop on index i = iterator for <c, d>, j = iterator for <a, b>
-    //    if input1[j].second < input0[i].first
-    //        increment j
-    //    else if input1[j].second > input0[i].first
-    //        increment i
-    //    else
-    //        hash join with currentInput(=input_)
-    //            if hash value of input0[i] == currentInput[k]
-    //                firstResultColumn = input1[j].first
-    //                secondResultColumn = currentInput[k].second
-
     // Sort Phase
     auto sortPairByFirst = [] (auto entryOne, auto entryTwo) {
       if (entryOne.first == entryTwo.first)
@@ -116,7 +103,7 @@ public:
     }
 
     // need to manually implement the sort function
-    std::sort(input0.begin(), input0.end(), sortPairByFirst);  // <c, d>
+    // std::sort(input0.begin(), input0.end(), sortPairByFirst);  // <c, d>
     std::sort(input2.begin(), input2.end(), sortPairBySecond); // <a, b>
 
     // // DEBUG
@@ -138,8 +125,8 @@ public:
     // }
     // std::cout << std::endl;
 
-    auto leftI = 0;
-    auto rightI = 0;
+    // auto leftI = 0;
+    // auto rightI = 0;
 
     // Hash Phase - Build
     // key = hashvalue, value = vector of pairs (for locality)
@@ -167,53 +154,26 @@ public:
       if (!inserted) hashTable[hashValue] = {buildInput};
     }
 
-    // Sort-Merge Join on unique values
-    // Merge Phase
-    auto first_duplicate_pos = -1;
-
-    while (leftI < input2.size() && rightI < input0.size()) {
-      auto leftInput = input2[leftI];
-      auto rightInput = input0[rightI];
-      if (leftInput.second < rightInput.first)
-        leftI++;
-      else if (leftInput.second > rightInput.first)
-        rightI++;
-      else {
-        // Hash Phase - Probe and Join
-        auto hashValue = modHash(rightInput.second);
-        while (hashTable[hashValue].has_value() &&
+    for (auto const& rightInput : input0) {
+      auto leftI = 0;
+      auto hashValue = modHash(rightInput.second);
+      while (hashTable[hashValue].has_value() &&
                hashTable[hashValue].value()[0].first != rightInput.second)
           hashValue = nextSlot(hashValue);
-        if (hashTable[hashValue].has_value() && hashTable[hashValue].value()[0].first == rightInput.second) {
-          for (auto const& entry : hashTable[hashValue].value()) {
-            // Iterate through duplicates of the state where b == c and d == e
-            firstResultColumn.push_back(leftInput.first); // a
-            secondResultColumn.push_back(entry.second);   // f
+      if (hashTable[hashValue].has_value() && hashTable[hashValue].value()[0].first == rightInput.second) {
+        while (leftI < input2.size()) {
+          auto leftInput = input2[leftI];
+          if (leftInput.second < rightInput.first) {
+            leftI++;
+          } else if (leftInput.second > rightInput.first) {
+            break;
+          } else {
+            for (auto const& entry : hashTable[hashValue].value()) {
+              firstResultColumn.push_back(leftInput.first); // a
+              secondResultColumn.push_back(entry.second);   // f
+            }
+            leftI++;
           }
-        }
-
-        if (rightI + 1 >= input0.size() && first_duplicate_pos != -1) {
-          rightI = first_duplicate_pos;
-          leftI++;
-          continue;
-        }
-
-        auto nextRightInput = input0[rightI + 1];
-
-        if (leftInput.second < nextRightInput.first) {
-          // Could add a check to see if nextLeftInput 
-          // is a duplicate to skip rightI backwards travel
-          if (first_duplicate_pos != -1) {
-            rightI = first_duplicate_pos;
-            first_duplicate_pos = -1;
-          }
-          leftI++;
-        }
-        else {
-          if (first_duplicate_pos == -1) {
-            first_duplicate_pos = rightI;
-          }
-          rightI++;
         }
       }
     }
