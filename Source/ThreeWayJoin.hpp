@@ -90,7 +90,7 @@ public:
 //     }
   
   // Function to perform Radix Sort on input vector of pairs
-  void radixSort(vector<pair<int64_t, int64_t>>& inputN)
+  void radixSort(std::vector<std::pair<int64_t, int64_t>>& inputN)
   {
       // Get the maximum value from the input vector
       int64_t maxValue = inputN[0].second;
@@ -104,7 +104,7 @@ public:
       for (int64_t bit = 1; maxValue/bit > 0; bit *= 2) {
 
           // Create a bucket for each possible value of the bit
-          vector<vector<pair<int64_t, int64_t>>> buckets(256);
+          std::vector<std::vector<std::pair<int64_t, int64_t>>> buckets(256);
 
           // Place each pair into the corresponding bucket based on the value of the bit
           for (auto it = inputN.begin(); it != inputN.end(); ++it) {
