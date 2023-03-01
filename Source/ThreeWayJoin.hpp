@@ -161,20 +161,54 @@ public:
                hashTable[hashValue].value()[0].first != rightInput.second)
           hashValue = nextSlot(hashValue);
       if (hashTable[hashValue].has_value() && hashTable[hashValue].value()[0].first == rightInput.second) {
-        while (leftI < input2.size()) {
-          auto leftInput = input2[leftI];
-          if (leftInput.second < rightInput.first) {
-            leftI++;
-          } else if (leftInput.second > rightInput.first) {
-            break;
-          } else {
-            for (auto const& entry : hashTable[hashValue].value()) {
-              firstResultColumn.push_back(leftInput.first); // a
-              secondResultColumn.push_back(entry.second);   // f
+        int left = 0;
+        int right = input2.size() - 1;
+        auto target = rightInput.second;
+
+        while (left <= right) {
+            int mid = left + (right - left) / 2;
+
+            if (input2[mid].second == target) {
+                // Increment the count and search for more duplicates on both sides
+                count++;
+                int i = mid - 1;
+                while (i >= left && input2[i].second == target) {
+                    for (auto const& entry : hashTable[hashValue].value()) {
+                      firstResultColumn.push_back(input2[i].first); // a
+                      secondResultColumn.push_back(entry.second);   // f
+                    }
+                    i--;
+                }
+                i = mid + 1;
+                while (i <= right && input2[i].second == target) {
+                    for (auto const& entry : hashTable[hashValue].value()) {
+                      firstResultColumn.push_back(input2[i].first); // a
+                      secondResultColumn.push_back(entry.second);   // f
+                    }
+                    i++;
+                }
+                break;
+            } else if (input2[mid].second < target) {
+                left = mid + 1;
+            } else {
+                right = mid - 1;
             }
-            leftI++;
-          }
         }
+
+        // while (leftI < input2.size()) {
+        //   auto leftInput = input2[leftI];
+        //   if (leftInput.second < rightInput.first) {
+        //     leftI++;
+        //   } else if (leftInput.second > rightInput.first) {
+        //     break;
+        //   } else {
+        //     for (auto const& entry : hashTable[hashValue].value()) {
+        //       firstResultColumn.push_back(leftInput.first); // a
+        //       secondResultColumn.push_back(entry.second);   // f
+        //     }
+        //     leftI++;
+        //   }
+        // }
       }
     }
     
