@@ -133,6 +133,7 @@ public:
       return modHash(value + 1);
     };
 
+    // Hash the <e,f> table
     for (std::size_t i = 0; i < input1.size(); ++i) {
       bool inserted = false;
       std::pair<int64_t, int64_t> buildInput = input1[i];
@@ -149,6 +150,7 @@ public:
       if (!inserted) hashTable[hashValue] = {buildInput};
     }
 
+    // Merge phase
     for (auto const& rightInput : input0) {
       auto leftI = 0;
       auto hashValue = modHash(rightInput.second);
