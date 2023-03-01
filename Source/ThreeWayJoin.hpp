@@ -1,5 +1,8 @@
 #pragma once
 #include <algorithm>
+#include <iostream>
+#include <vector>
+
 namespace {
 using namespace facebook::velox;
 using namespace datagenerator;
@@ -63,28 +66,60 @@ public:
 
   bool needsInput() const override { return !noMoreInput_; }
 
-  typedef long long ll;
+//   typedef long long ll;
 
-  struct Table {
-        std::vector<std::pair<ll, ll>> rows;
-    };
+//   struct Table {
+//         std::vector<std::pair<ll, ll>> rows;
+//     };
 
-    void radixSort(Table& input) {
-        //input can be input0, input1, input2
-        std::vector<std::vector<std::pair<ll, ll>>> buckets(1LL << 16);
-        for (int i = 0; i < 4; i++) {
-            for (auto& row : input.rows) {
-                buckets[(row.first >> (i * 16)) & 0xFFFF].push_back(row);
-            }
-            input.rows.clear();
-            for (auto& bucket : buckets) {
-                for (auto& row : bucket) {
-                    input.rows.push_back(row);
-                }
-                bucket.clear();
-            }
-        }
-    }
+//     void radixSort(Table& input) {
+//         //input can be input0, input1, input2
+//         std::vector<std::vector<std::pair<ll, ll>>> buckets(1LL << 16);
+//         for (int i = 0; i < 4; i++) {
+//             for (auto& row : input.rows) {
+//                 buckets[(row.first >> (i * 16)) & 0xFFFF].push_back(row);
+//             }
+//             input.rows.clear();
+//             for (auto& bucket : buckets) {
+//                 for (auto& row : bucket) {
+//                     input.rows.push_back(row);
+//                 }
+//                 bucket.clear();
+//             }
+//         }
+//     }
+  
+  // Function to perform Radix Sort on input vector of pairs
+  void radixSort(vector<pair<int64_t, int64_t>>& inputN)
+  {
+      // Get the maximum value from the input vector
+      int64_t maxValue = inputN[0].second;
+      for (auto it = inputN.begin(); it != inputN.end(); ++it) {
+          if (it->second > maxValue) {
+              maxValue = it->second;
+          }
+      }
+
+      // Iterate through each bit of the maximum value
+      for (int64_t bit = 1; maxValue/bit > 0; bit *= 2) {
+
+          // Create a bucket for each possible value of the bit
+          vector<vector<pair<int64_t, int64_t>>> buckets(256);
+
+          // Place each pair into the corresponding bucket based on the value of the bit
+          for (auto it = inputN.begin(); it != inputN.end(); ++it) {
+              int64_t bucketIndex = (it->second / bit) % 256;
+              buckets[bucketIndex].push_back(*it);
+          }
+
+          // Clear the input vector and append the pairs from each bucket in order
+          inputN.clear();
+          for (auto& bucket : buckets) {
+              inputN.insert(inputN.end(), bucket.begin(), bucket.end());
+          }
+      }
+  }
+
 
   // Called every time your operator needs to produce data. It processes the
   // input saved in `input_` and returns a new RowVector.
