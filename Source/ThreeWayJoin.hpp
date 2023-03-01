@@ -110,9 +110,9 @@ public:
       return entryOne.second < entryTwo.second;
     };
 
-    std::vector<std::pair<int64_t, int64_t> input2(buffer->size());
+    std::vector<std::pair<int64_t, int64_t>> input2(buffer->size());
     for (size_t i = 0; i < buffer->size(); ++i) {
-      input2[i] = { buffer->valueAtFast(i), buffer2->valueAtFast(i) }
+      input2[i] = { buffer->valueAtFast(i), buffer2->valueAtFast(i) };
     }
 
     // need to manually implement the sort function
@@ -123,10 +123,10 @@ public:
     // std::cout << inputNames[0].first << " " << inputNames[0].second << std::endl;
     // std::cout << inputNames[1].first << " " << inputNames[1].second << std::endl;
 
-    // std::cout << "Input0 : ";
-    // for (std::size_t i = 0; i < input0.size(); ++i)
-    //   std::cout << "<" << input0[i].first << ", " << input0[i].second << ">" << " ";
-    // std::cout << std::endl;
+    std::cout << "Input2 : ";
+    for (std::size_t i = 0; i < input2.size(); ++i)
+      std::cout << "<" << input2[i].first << ", " << input2[i].second << ">" << " ";
+    std::cout << std::endl;
     // std::cout << "Input1 : ";
     // for (std::size_t i = 0; i < input1.size(); ++i)
     //   std::cout << "<" << input1[i].first << ", " << input1[i].second << ">" << " ";
@@ -143,11 +143,11 @@ public:
 
     // Hash Phase - Build
     // key = hashvalue, value = vector of pairs (for locality)
-    std::vector<std::optional<std::vector<std::pair<int64_t, int64_t>>>> hashTable(5000);
+    std::vector<std::optional<std::vector<std::pair<int64_t, int64_t>>>> hashTable(100);
     auto modHash = [] (auto const& value) {
       // Data is in the 0~5000 range, hence there are no collisions
       // There will be some empty slots, but we're trading off memory for locality
-      return value % 5000;
+      return value % 100;
     };
     auto nextSlot = [&] (auto const& value) {
       return modHash(value + 1);
@@ -167,9 +167,10 @@ public:
       if (!inserted) hashTable[hashValue] = {buildInput};
     }
 
-
     // Sort-Merge Join on unique values
     // Merge Phase
+    auto first_duplicate_pos = -1;
+
     while (leftI < input2.size() && rightI < input0.size()) {
       auto leftInput = input2[leftI];
       auto rightInput = input0[rightI];
@@ -179,11 +180,11 @@ public:
         rightI++;
       else {
         // Hash Phase - Probe and Join
-        auto hashValue = modHash(rightInput.first);
+        auto hashValue = modHash(rightInput.second);
         while (hashTable[hashValue].has_value() &&
                hashTable[hashValue].value()[0].first != rightInput.second)
           hashValue = nextSlot(hashValue);
-        if (hashTable[hashValue].value()[0].first == rightInput.second) {
+        if (hashTable[hashValue].has_value() && hashTable[hashValue].value()[0].first == rightInput.second) {
           for (auto const& entry : hashTable[hashValue].value()) {
             // Iterate through duplicates of the state where b == c and d == e
             firstResultColumn.push_back(leftInput.first); // a
@@ -191,20 +192,27 @@ public:
           }
         }
 
-        // Checking for duplicates in sort-merge
+        if (rightI + 1 >= input0.size() && first_duplicate_pos != -1) {
+          rightI = first_duplicate_pos;
+          leftI++;
+          continue;
+        }
+
         auto nextRightInput = input0[rightI + 1];
-        auto first_duplicate_pos = -1;
 
         if (leftInput.second < nextRightInput.first) {
           // Could add a check to see if nextLeftInput 
           // is a duplicate to skip rightI backwards travel
           if (first_duplicate_pos != -1) {
             rightI = first_duplicate_pos;
+            first_duplicate_pos = -1;
           }
           leftI++;
         }
         else {
-          first_duplicate_pos = rightI;
+          if (first_duplicate_pos == -1) {
+            first_duplicate_pos = rightI;
+          }
           rightI++;
         }
       }
