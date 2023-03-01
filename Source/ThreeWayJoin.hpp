@@ -118,9 +118,6 @@ public:
     // need to manually implement the sort function
     //std::sort(input0.begin(), input0.end(), sortPairByFirst);  // <c, d>
     //std::sort(input2.begin(), input2.end(), sortPairBySecond); // <a, b>
-    radixSort(input0);
-    radixSort(input2);
-    
     typedef long long ll;
 
     struct Table {
@@ -144,6 +141,10 @@ public:
         }
     }
 
+    radixSort(input0);
+    radixSort(input2);
+    
+    
     // // DEBUG
     // std::cout << inputNames[0].first << " " << inputNames[0].second << std::endl;
     // std::cout << inputNames[1].first << " " << inputNames[1].second << std::endl;
