@@ -1,5 +1,4 @@
 #pragma once
-#include <algorithm>
 namespace {
 using namespace facebook::velox;
 using namespace datagenerator;
@@ -63,6 +62,36 @@ public:
 
   bool needsInput() const override { return !noMoreInput_; }
 
+  void quickSort(std::vector<std::pair<int64_t,int64_t>> &arr, int64_t low, int64_t high, bool sortByFirst) {
+    if (low < high) {
+        int64_t i = low;
+        int64_t j = high;
+        int64_t pivot = sortByFirst ? arr[(low + high) / 2].first : arr[(low + high) / 2].second;
+        while (i <= j) {
+          int64_t currI = sortByFirst ? arr[i].first : arr[i].second;
+          int64_t currJ = sortByFirst ? arr[j].first : arr[j].second;
+          
+            while (currI < pivot) {
+                currI = sortByFirst ? arr[++i].first : arr[++i].second;
+            }
+            while (currJ > pivot) {
+                currJ = sortByFirst ? arr[--j].first : arr[--j].second ;
+            }
+            if (i <= j) {
+                swap(arr[i], arr[j]);
+                i++;
+                j--;
+            }
+        }
+        if (low < j) {
+            quickSort(arr, low, j, sortByFirst);
+        }
+        if (i < high) {
+            quickSort(arr, i, high, sortByFirst);
+        }
+    }
+  }
+
   // Called every time your operator needs to produce data. It processes the
   // input saved in `input_` and returns a new RowVector.
   RowVectorPtr getOutput() override {
@@ -85,42 +114,24 @@ public:
     auto& input1 = inputNames[0].first != "c" ? inputs[0] : inputs[1]; // < e, f >
 
     // Sort Phase
-    auto sortPairByFirst = [] (auto entryOne, auto entryTwo) {
-      if (entryOne.first == entryTwo.first)
-        return entryOne.second < entryTwo.second;
-      return entryOne.first < entryTwo.first;
-    };
-
-    auto sortPairBySecond = [] (auto entryOne, auto entryTwo) {
-      if (entryOne.second == entryTwo.second)
-        return entryOne.first < entryTwo.first;
-      return entryOne.second < entryTwo.second;
-    };
-
     std::vector<std::pair<int64_t, int64_t>> input2(buffer->size());
     for (size_t i = 0; i < buffer->size(); ++i) {
       input2[i] = { buffer->valueAtFast(i), buffer2->valueAtFast(i) };
     }
 
-    // need to manually implement the sort function
-    std::sort(input0.begin(), input0.end(), sortPairByFirst);  // <c, d>
-    std::sort(input2.begin(), input2.end(), sortPairBySecond); // <a, b>
+    quickSort(input0, 0, input0.size() - 1, true);
+    quickSort(input2, 0, input2.size() - 1, false);
 
     // Hash Phase - Build
     // key = hashvalue, value = vector of pairs (for locality)
     std::vector<std::optional<std::vector<std::pair<int64_t, int64_t>>>> hashTable(100);
     auto modHash = [] (auto const& value) {
-      // Data is in the 0~5000 range, hence there are no collisions
-      // There will be some empty slots, but we're trading off memory for locality
       return value % 100;
     };
 
     auto nextSlot = [&] (auto const& value) {
       return modHash(value + 1);
     };
-
-    auto leftI = 0;
-    auto rightI = 0;
 
     for (std::size_t i = 0; i < input1.size(); ++i) {
       bool inserted = false;
@@ -138,52 +149,29 @@ public:
       if (!inserted) hashTable[hashValue] = {buildInput};
     }
 
-    // Sort-Merge Join on unique values
-    // Merge Phase
-    auto first_duplicate_pos = -1;
+    for (auto const& rightInput : input0) {
+      auto leftI = 0;
+      auto hashValue = modHash(rightInput.second);
 
-    while (leftI < input2.size() && rightI < input0.size()) {
-      auto leftInput = input2[leftI];
-      auto rightInput = input0[rightI];
-      
-      if (leftInput.second < rightInput.first)
-        leftI++;
-      else if (leftInput.second > rightInput.first)
-        rightI++;
-      else {
-        // Hash Phase - Probe and Join
-        auto hashValue = modHash(rightInput.second);
-        while (hashTable[hashValue].has_value() &&
+      while (hashTable[hashValue].has_value() &&
                hashTable[hashValue].value()[0].first != rightInput.second)
           hashValue = nextSlot(hashValue);
-        if (hashTable[hashValue].has_value() && hashTable[hashValue].value()[0].first == rightInput.second) {
-          for (auto const& entry : hashTable[hashValue].value()) {
-            // Iterate through duplicates of the state where b == c and d == e
-            firstResultColumn.push_back(leftInput.first); // a
-            secondResultColumn.push_back(entry.second);   // f
-          }
-        }
 
-        if (rightI + 1 >= input0.size() && first_duplicate_pos != -1) {
-          rightI = first_duplicate_pos;
-          leftI++;
-          continue;
-        }
+      if (hashTable[hashValue].has_value() && hashTable[hashValue].value()[0].first == rightInput.second) {
+        while (leftI < input2.size()) {
+          auto leftInput = input2[leftI];
 
-        if (leftInput.second < input0[rightI + 1].first) {
-          // Could add a check to see if nextLeftInput 
-          // is a duplicate to skip rightI backwards travel
-          if (first_duplicate_pos != -1) {
-            rightI = first_duplicate_pos;
-            first_duplicate_pos = -1;
+          if (leftInput.second < rightInput.first) {
+            leftI++;
+          } else if (leftInput.second > rightInput.first) {
+            break;
+          } else {
+            for (auto const& entry : hashTable[hashValue].value()) {
+              firstResultColumn.push_back(leftInput.first); // a
+              secondResultColumn.push_back(entry.second);   // f
+            }
+            leftI++;
           }
-          leftI++;
-        }
-        else {
-          if (first_duplicate_pos == -1) {
-            first_duplicate_pos = rightI;
-          }
-          rightI++;
         }
       }
     }
