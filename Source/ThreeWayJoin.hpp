@@ -66,10 +66,10 @@ public:
   // Called every time your operator needs to produce data. It processes the
   // input saved in `input_` and returns a new RowVector.
   RowVectorPtr getOutput() override {
-    if(phase == 0 || input_ == nullptr) {
+    if (phase == 0 || input_ == nullptr) {
       return nullptr;
     }
-    while(inputs.size() < 2) { // wait input
+    while (inputs.size() < 2) { // wait input
       std::this_thread::sleep_for(std::chrono::milliseconds(150));
     }
 
@@ -80,22 +80,9 @@ public:
     auto buffer = currentInput->childAt(0)->template asFlatVector<int64_t>();
     auto buffer2 = currentInput->childAt(1)->template asFlatVector<int64_t>();
 
-    // make sure the inputs are ordered correctly
+    // Make sure the inputs are ordered correctly
     auto& input0 = inputNames[0].first == "c" ? inputs[0] : inputs[1]; // < c, d >
     auto& input1 = inputNames[0].first != "c" ? inputs[0] : inputs[1]; // < e, f >
-
-    /* Initial Attempt */
-    // std::sort input0 and input1
-    // loop on index i = iterator for <c, d>, j = iterator for <a, b>
-    //    if input1[j].second < input0[i].first
-    //        increment j
-    //    else if input1[j].second > input0[i].first
-    //        increment i
-    //    else
-    //        hash join with currentInput(=input_)
-    //            if hash value of input0[i] == currentInput[k]
-    //                firstResultColumn = input1[j].first
-    //                secondResultColumn = currentInput[k].second
 
     // Sort Phase
     auto sortPairByFirst = [] (auto entryOne, auto entryTwo) {
@@ -119,28 +106,6 @@ public:
     std::sort(input0.begin(), input0.end(), sortPairByFirst);  // <c, d>
     std::sort(input2.begin(), input2.end(), sortPairBySecond); // <a, b>
 
-    // // DEBUG
-    // std::cout << inputNames[0].first << " " << inputNames[0].second << std::endl;
-    // std::cout << inputNames[1].first << " " << inputNames[1].second << std::endl;
-
-    // std::cout << "Input2 : ";
-    // for (std::size_t i = 0; i < input2.size(); ++i)
-    //   std::cout << "<" << input2[i].first << ", " << input2[i].second << ">" << " ";
-    // std::cout << std::endl;
-    // std::cout << "Input1 : ";
-    // for (std::size_t i = 0; i < input1.size(); ++i)
-    //   std::cout << "<" << input1[i].first << ", " << input1[i].second << ">" << " ";
-
-    // for (std::size_t i = 0; i < buffer.size(); ++i) {
-    //   std::cout << "BUFFER: "
-    //   std::cout << "<" << buffer->valueAtFast(i) << ", ";
-    //   std::cout << buffer2->valueAtFast(i) << "> ";
-    // }
-    // std::cout << std::endl;
-
-    auto leftI = 0;
-    auto rightI = 0;
-
     // Hash Phase - Build
     // key = hashvalue, value = vector of pairs (for locality)
     std::vector<std::optional<std::vector<std::pair<int64_t, int64_t>>>> hashTable(100);
@@ -149,13 +114,19 @@ public:
       // There will be some empty slots, but we're trading off memory for locality
       return value % 100;
     };
+
     auto nextSlot = [&] (auto const& value) {
       return modHash(value + 1);
     };
+
+    auto leftI = 0;
+    auto rightI = 0;
+
     for (std::size_t i = 0; i < input1.size(); ++i) {
       bool inserted = false;
       std::pair<int64_t, int64_t> buildInput = input1[i];
       auto hashValue = modHash(buildInput.first);
+      
       while (hashTable[hashValue].has_value()) {
         if (buildInput.first == hashTable[hashValue].value()[0].first) {
           hashTable[hashValue].value().push_back(buildInput);
@@ -174,6 +145,7 @@ public:
     while (leftI < input2.size() && rightI < input0.size()) {
       auto leftInput = input2[leftI];
       auto rightInput = input0[rightI];
+      
       if (leftInput.second < rightInput.first)
         leftI++;
       else if (leftInput.second > rightInput.first)
@@ -198,9 +170,7 @@ public:
           continue;
         }
 
-        auto nextRightInput = input0[rightI + 1];
-
-        if (leftInput.second < nextRightInput.first) {
+        if (leftInput.second < input0[rightI + 1].first) {
           // Could add a check to see if nextLeftInput 
           // is a duplicate to skip rightI backwards travel
           if (first_duplicate_pos != -1) {
