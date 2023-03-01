@@ -63,6 +63,29 @@ public:
 
   bool needsInput() const override { return !noMoreInput_; }
 
+  typedef long long ll;
+
+  struct Table {
+        std::vector<std::pair<ll, ll>> rows;
+    };
+
+    void radixSort(Table& input) {
+        //input can be input0, input1, input2
+        std::vector<std::vector<std::pair<ll, ll>>> buckets(1LL << 16);
+        for (int i = 0; i < 4; i++) {
+            for (auto& row : input.rows) {
+                buckets[(row.first >> (i * 16)) & 0xFFFF].push_back(row);
+            }
+            input.rows.clear();
+            for (auto& bucket : buckets) {
+                for (auto& row : bucket) {
+                    input.rows.push_back(row);
+                }
+                bucket.clear();
+            }
+        }
+    }
+
   // Called every time your operator needs to produce data. It processes the
   // input saved in `input_` and returns a new RowVector.
   RowVectorPtr getOutput() override {
@@ -118,31 +141,9 @@ public:
     // need to manually implement the sort function
     //std::sort(input0.begin(), input0.end(), sortPairByFirst);  // <c, d>
     //std::sort(input2.begin(), input2.end(), sortPairBySecond); // <a, b>
+
     radixSort(input0);
     radixSort(input2);
-    
-    typedef long long ll;
-
-    struct Table {
-        vector<pair<ll, ll>> rows;
-    };
-
-    void radixSort(Table& input) {
-        //input can be input0, input1, input2
-        vector<vector<pair<ll, ll>>> buckets(1LL << 16);
-        for (int i = 0; i < 4; i++) {
-            for (auto& row : input.rows) {
-                buckets[(row.first >> (i * 16)) & 0xFFFF].push_back(row);
-            }
-            input.rows.clear();
-            for (auto& bucket : buckets) {
-                for (auto& row : bucket) {
-                    input.rows.push_back(row);
-                }
-                bucket.clear();
-            }
-        }
-    }
 
     // // DEBUG
     // std::cout << inputNames[0].first << " " << inputNames[0].second << std::endl;
